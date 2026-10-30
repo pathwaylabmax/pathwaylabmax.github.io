@@ -1,37 +1,510 @@
 <!DOCTYPE html>
-<html lang="fa" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>PathwayLab</title>
+  <meta name="theme-color" content="#101820">
+  <title>PathwayLab | Interactive Biochemistry</title>
   <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101820;
+      --panel: #192630;
+      --panel-soft: #202f39;
+      --text: #edf3f2;
+      --muted: #a9b8bb;
+      --line: #35454c;
+      --mint: #65dfbd;
+      --yellow: #f2cc72;
+      --red: #ff8c82;
+    }
+
+    * { box-sizing: border-box; }
+
     body {
       margin: 0;
-      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, Tahoma, sans-serif;
+      line-height: 1.65;
+    }
+
+    button { font: inherit; }
+
+    .topbar {
+      min-height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 12px max(20px, calc((100vw - 1120px) / 2));
+      border-bottom: 1px solid var(--line);
+      background: #131e26;
+    }
+
+    .brand {
+      color: var(--mint);
+      font-size: 20px;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .language-button, .nav-button, .step-button, .answer-button {
+      min-height: 40px;
+      padding: 8px 14px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: var(--text);
+      background: var(--panel);
+      cursor: pointer;
+    }
+
+    button:hover { border-color: var(--mint); }
+    button:focus-visible { outline: 2px solid var(--mint); outline-offset: 2px; }
+
+    .nav-strip {
+      display: flex;
+      gap: 8px;
+      padding: 12px max(20px, calc((100vw - 1120px) / 2));
+      overflow-x: auto;
+      border-bottom: 1px solid var(--line);
+      white-space: nowrap;
+    }
+
+    .nav-button[aria-current="page"] {
+      color: var(--mint);
+      border-color: var(--mint);
+    }
+
+    main {
+      width: min(1120px, calc(100% - 40px));
+      margin: 40px auto 72px;
+    }
+
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--mint);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3 { line-height: 1.25; }
+    h1 { margin: 0; font-size: clamp(32px, 5vw, 48px); }
+    h2 { margin: 0 0 16px; font-size: 24px; }
+    h3 { margin: 0 0 8px; font-size: 17px; }
+
+    .intro {
+      max-width: 720px;
+      margin: 14px 0 28px;
+      color: var(--muted);
+    }
+
+    .section-heading {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 16px;
+      margin: 38px 0 16px;
+    }
+
+    .section-heading p { margin: 0; color: var(--muted); }
+
+    .pathway-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .pathway-card {
+      min-height: 150px;
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel);
+    }
+
+    .pathway-card.active { border-color: var(--mint); }
+
+    .pathway-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .tag {
+      display: inline-block;
+      margin-bottom: 12px;
+      color: var(--yellow);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(260px, .85fr);
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .panel {
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel);
+    }
+
+    .cycle-track {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin: 22px 0;
+    }
+
+    .metabolite {
+      min-height: 72px;
       display: grid;
       place-items: center;
-      background: #0b1220;
-      color: #e8eef8;
-      font-family: Tahoma, Arial, sans-serif;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel-soft);
       text-align: center;
+      font-size: 13px;
     }
-    main {
-      padding: 32px;
+
+    .metabolite.current {
+      border-color: var(--mint);
+      color: var(--mint);
     }
-    h1 {
-      color: #64e0c2;
-      font-size: 48px;
+
+    .formula {
+      direction: ltr;
+      unicode-bidi: isolate;
+      display: inline-block;
+      font-family: Arial, sans-serif;
+      white-space: nowrap;
     }
-    p {
-      line-height: 2;
+
+    .step-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .step-count { color: var(--muted); font-size: 14px; }
+
+    .explanation {
+      min-height: 92px;
+      margin: 10px 0 0;
+      color: var(--muted);
+    }
+
+    .quiz-options {
+      display: grid;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .answer-button {
+      width: 100%;
+      text-align: start;
+    }
+
+    .answer-button.correct { border-color: var(--mint); color: var(--mint); }
+    .answer-button.incorrect { border-color: var(--red); color: var(--red); }
+
+    .quiz-feedback {
+      min-height: 28px;
+      margin: 10px 0 0;
+      color: var(--yellow);
+    }
+
+    .coming-soon {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 20px;
+      border: 1px dashed #68777b;
+      border-radius: 6px;
+      background: #151f26;
+    }
+
+    .coming-soon p { margin: 4px 0 0; color: var(--muted); }
+    .soon-label { color: var(--yellow); white-space: nowrap; font-size: 13px; }
+
+    footer {
+      padding: 22px 20px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      text-align: center;
+      font-size: 13px;
+    }
+
+    [hidden] { display: none !important; }
+
+    html[dir="rtl"] body { font-family: Tahoma, Arial, sans-serif; }
+    html[dir="rtl"] .eyebrow { letter-spacing: 0; }
+    html[dir="rtl"] .formula,
+    html[dir="rtl"] .step-count,
+    html[dir="rtl"] .soon-label { direction: ltr; }
+
+    @media (max-width: 760px) {
+      .pathway-grid { grid-template-columns: 1fr; }
+      .workspace { grid-template-columns: 1fr; }
+      .cycle-track { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      main { margin-top: 28px; }
+      .section-heading { align-items: start; flex-direction: column; }
+    }
+
+    @media (max-width: 420px) {
+      .topbar { padding-inline: 14px; }
+      .nav-strip { padding-inline: 14px; }
+      main { width: calc(100% - 28px); }
+      .panel { padding: 16px; }
+      .step-controls { flex-wrap: wrap; }
     }
   </style>
 </head>
 <body>
+  <header>
+    <div class="topbar">
+      <a class="brand" href="#" aria-label="PathwayLab home">PathwayLab</a>
+      <div class="top-actions">
+        <button class="language-button" id="languageToggle" type="button" aria-label="Change language">
+          فارسی
+        </button>
+      </div>
+    </div>
+
+    <nav class="nav-strip" aria-label="Main navigation">
+      <button class="nav-button" type="button" aria-current="page" data-en="Pathways" data-fa="مسیرهای متابولیک">Pathways</button>
+      <button class="nav-button" type="button" data-en="Nomenclature" data-fa="نام‌گذاری مواد">Nomenclature</button>
+      <button class="nav-button" type="button" data-en="About" data-fa="درباره">About</button>
+    </nav>
+  </header>
+
   <main>
-    <h1 dir="ltr">PathwayLab</h1>
-    <p>آزمایشگاه تعاملی آموزش بیوشیمی</p>
-    <p>سایت در حال ساخت است.</p>
+    <section aria-labelledby="pageTitle">
+      <p class="eyebrow" data-en="Interactive biochemistry" data-fa="بیوشیمی تعاملی">Interactive biochemistry</p>
+      <h1 id="pageTitle" data-en="Explore metabolic pathways" data-fa="مسیرهای متابولیک را کاوش کنید">Explore metabolic pathways</h1>
+      <p class="intro" data-en="Learn how molecules move through essential biochemical pathways, one reaction at a time."
+         data-fa="حرکت مولکول‌ها در مسیرهای مهم بیوشیمی را، واکنش به واکنش، یاد بگیرید.">
+        Learn how molecules move through essential biochemical pathways, one reaction at a time.
+      </p>
+
+      <div class="section-heading">
+        <div>
+          <h2 data-en="Featured pathways" data-fa="مسیرهای منتخب">Featured pathways</h2>
+          <p data-en="Choose a pathway to begin." data-fa="برای شروع یک مسیر را انتخاب کنید.">Choose a pathway to begin.</p>
+        </div>
+      </div>
+
+      <div class="pathway-grid">
+        <article class="pathway-card active">
+          <span class="tag" data-en="AVAILABLE NOW" data-fa="اکنون در دسترس">AVAILABLE NOW</span>
+          <h3 data-en="Citric acid cycle" data-fa="چرخهٔ اسید سیتریک">Citric acid cycle</h3>
+          <p data-en="Follow carbon through the central energy-producing cycle."
+             data-fa="مسیر کربن را در چرخهٔ مرکزی تولید انرژی دنبال کنید.">
+            Follow carbon through the central energy-producing cycle.
+          </p>
+        </article>
+        <article class="pathway-card">
+          <span class="tag" data-en="IN DEVELOPMENT" data-fa="در دست ساخت">IN DEVELOPMENT</span>
+          <h3 data-en="Gluconeogenesis" data-fa="گلوکونئوژنز (Gluconeogenesis)">Gluconeogenesis</h3>
+          <p data-en="Explore glucose synthesis from non-carbohydrate precursors."
+             data-fa="ساخت گلوکز از پیش‌سازهای غیرکربوهیدراتی را بررسی کنید.">
+            Explore glucose synthesis from non-carbohydrate precursors.
+          </p>
+        </article>
+        <article class="pathway-card">
+          <span class="tag" data-en="IN DEVELOPMENT" data-fa="در دست ساخت">IN DEVELOPMENT</span>
+          <h3 data-en="Beta-oxidation" data-fa="بتا اکسیداسیون (Beta-oxidation)">Beta-oxidation</h3>
+          <p data-en="See how fatty acids are broken down to produce energy."
+             data-fa="ببینید اسیدهای چرب چگونه برای تولید انرژی تجزیه می‌شوند.">
+            See how fatty acids are broken down to produce energy.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <section aria-labelledby="cycleTitle">
+      <div class="section-heading">
+        <div>
+          <h2 id="cycleTitle" data-en="Citric acid cycle" data-fa="چرخهٔ اسید سیتریک">Citric acid cycle</h2>
+          <p data-en="A simplified learning preview" data-fa="پیش‌نمایش آموزشی ساده‌شده">A simplified learning preview</p>
+        </div>
+      </div>
+
+      <div class="workspace">
+        <article class="panel">
+          <h3 data-en="Cycle overview" data-fa="نمای کلی چرخه">Cycle overview</h3>
+          <div class="cycle-track" id="cycleTrack" aria-live="polite"></div>
+          <div class="step-controls">
+            <button class="step-button" id="previousStep" type="button" data-en="← Previous" data-fa="→ مرحلهٔ قبل">← Previous</button>
+            <span class="step-count" id="stepCount">Step 1 of 4</span>
+            <button class="step-button" id="nextStep" type="button" data-en="Next →" data-fa="مرحلهٔ بعد ←">Next →</button>
+          </div>
+        </article>
+
+        <article class="panel">
+          <h3 data-en="What happens?" data-fa="چه اتفاقی می‌افتد؟">What happens?</h3>
+          <p class="explanation" id="stepExplanation"></p>
+          <h3 data-en="Quick check" data-fa="آزمون کوتاه">Quick check</h3>
+          <p id="quizQuestion"
+             data-en="Which molecule combines with oxaloacetate to form citrate?"
+             data-fa="کدام مولکول با اگزالواستات ترکیب می‌شود تا سیترات بسازد؟">
+            Which molecule combines with oxaloacetate to form citrate?
+          </p>
+          <div class="quiz-options" id="quizOptions"></div>
+          <p class="quiz-feedback" id="quizFeedback" aria-live="polite"></p>
+        </article>
+      </div>
+    </section>
+
+    <section aria-labelledby="nomenclatureTitle">
+      <div class="section-heading">
+        <div>
+          <h2 id="nomenclatureTitle" data-en="Chemical nomenclature" data-fa="نام‌گذاری شیمیایی">Chemical nomenclature</h2>
+          <p data-en="A future learning module" data-fa="یک بخش آموزشی در برنامهٔ توسعه">A future learning module</p>
+        </div>
+      </div>
+      <div class="coming-soon">
+        <div>
+          <h3 data-en="Organic and ionic compound naming" data-fa="نام‌گذاری ترکیبات آلی و یونی">Organic and ionic compound naming</h3>
+          <p data-en="This module will cover naming rules, examples, and practice questions."
+             data-fa="این بخش قواعد نام‌گذاری، مثال‌ها و تمرین‌های مربوط به ترکیبات را پوشش خواهد داد.">
+            This module will cover naming rules, examples, and practice questions.
+          </p>
+        </div>
+        <span class="soon-label" data-en="COMING LATER" data-fa="در مراحل بعد">COMING LATER</span>
+      </div>
+    </section>
   </main>
+
+  <footer data-en="PathwayLab · Educational preview" data-fa="PathwayLab · پیش‌نمایش آموزشی">
+    PathwayLab · Educational preview
+  </footer>
+
+  <script>
+    const steps = [
+      {
+        molecule: "Acetyl-CoA",
+        en: "Acetyl-CoA donates a two-carbon group that combines with oxaloacetate to form citrate.",
+        fa: "استیل‌کوآ (Acetyl-CoA) یک گروه دوکربنه می‌دهد که با اگزالواستات ترکیب شده و سیترات را می‌سازد."
+      },
+      {
+        molecule: "Citrate",
+        en: "Citrate is rearranged to form isocitrate, preparing the molecule for oxidation.",
+        fa: "سیترات به ایزوسیترات تبدیل می‌شود و مولکول برای اکسیداسیون آماده می‌شود."
+      },
+      {
+        molecule: "Isocitrate",
+        en: "Isocitrate is oxidized; carbon dioxide is released and NADH is produced.",
+        fa: "ایزوسیترات اکسید می‌شود؛ دی‌اکسید کربن آزاد و NADH تولید می‌شود."
+      },
+      {
+        molecule: "Oxaloacetate",
+        en: "Oxaloacetate is regenerated, allowing the cycle to begin another turn.",
+        fa: "اگزالواستات بازسازی می‌شود و چرخه می‌تواند دور دیگری را آغاز کند."
+      }
+    ];
+
+    const answers = [
+      { en: "Acetyl-CoA", fa: "استیل‌کوآ (Acetyl-CoA)" },
+      { en: "Lactate", fa: "لاکتات (Lactate)" },
+      { en: "Glucose", fa: "گلوکز (Glucose)" }
+    ];
+
+    let language = "en";
+    let currentStep = 0;
+
+    const track = document.getElementById("cycleTrack");
+    const explanation = document.getElementById("stepExplanation");
+    const stepCount = document.getElementById("stepCount");
+    const quizOptions = document.getElementById("quizOptions");
+    const feedback = document.getElementById("quizFeedback");
+
+    function renderStep() {
+      const step = steps[currentStep];
+      track.replaceChildren();
+
+      steps.forEach((item, index) => {
+        const node = document.createElement("div");
+        node.className = "metabolite" + (index === currentStep ? " current" : "");
+        node.textContent = item.molecule;
+        node.dir = "ltr";
+        track.appendChild(node);
+      });
+
+      explanation.textContent = step[language];
+      stepCount.textContent = language === "en"
+        ? `Step ${currentStep + 1} of ${steps.length}`
+        : `مرحلهٔ ${currentStep + 1} از ${steps.length}`;
+    }
+
+    function renderAnswers() {
+      quizOptions.replaceChildren();
+      feedback.textContent = "";
+
+      answers.forEach((answer, index) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "answer-button";
+        button.textContent = answer[language];
+        button.addEventListener("click", () => {
+          const correct = index === 0;
+          button.classList.add(correct ? "correct" : "incorrect");
+          feedback.textContent = correct
+            ? (language === "en" ? "Correct. Acetyl-CoA combines with oxaloacetate." : "درست است. استیل‌کوآ با اگزالواستات ترکیب می‌شود.")
+            : (language === "en" ? "Not quite. Try again." : "نه کاملاً. دوباره تلاش کنید.");
+        });
+        quizOptions.appendChild(button);
+      });
+    }
+
+    function setLanguage(nextLanguage) {
+      language = nextLanguage;
+      const isPersian = language === "fa";
+
+      document.documentElement.lang = language;
+      document.documentElement.dir = isPersian ? "rtl" : "ltr";
+      document.getElementById("languageToggle").textContent = isPersian ? "English" : "فارسی";
+
+      document.querySelectorAll("[data-en][data-fa]").forEach((element) => {
+        element.textContent = element.dataset[language];
+      });
+
+      renderStep();
+      renderAnswers();
+    }
+
+    document.getElementById("languageToggle").addEventListener("click", () => {
+      setLanguage(language === "en" ? "fa" : "en");
+    });
+
+    document.getElementById("previousStep").addEventListener("click", () => {
+      currentStep = (currentStep - 1 + steps.length) % steps.length;
+      renderStep();
+    });
+
+    document.getElementById("nextStep").addEventListener("click", () => {
+      currentStep = (currentStep + 1) % steps.length;
+      renderStep();
+    });
+
+    renderStep();
+    renderAnswers();
+  </script>
 </body>
 </html>
